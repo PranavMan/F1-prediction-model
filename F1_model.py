@@ -14,7 +14,7 @@ from sklearn.impute import SimpleImputer
 
 
 # Load lap telemetry data
-f1_data = pd.read_csv("F1_variation/data/f1_lap_telemetry_2022_2025.csv")
+f1_data = pd.read_csv("data/f1_lap_telemetry_2022_2025.csv")
 
 # Convert numeric columns
 numeric_cols = [
@@ -67,6 +67,8 @@ race_level_data['fastest_lap_flag'] = (race_level_data['lap_time_sec_min'] == ra
 # Features & target
 # ------------------------
 y = race_level_data['points_first']
+
+# Use all columns except identifiers/targets
 feature_cols = [
     c for c in race_level_data.columns 
     if c not in ['year', 'race', 'driver', 'points_first', 'finish_position_first']
@@ -74,23 +76,32 @@ feature_cols = [
 X = race_level_data[feature_cols]
 
 # ------------------------
-# Preprocessing
+# Preprocessing (future-proof small one-hot)
 # ------------------------
-numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
-categorical_features = X.select_dtypes(exclude=[np.number]).columns.tolist()
+
+# Future categorical features (commented for now)
+# categorical_features = ["tire_compound", "weather"]
+categorical_features = []  # <-- empty list until you add them later
+
+numeric_features = [c for c in feature_cols if c not in categorical_features]
 
 numeric_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='mean'))
 ])
+
+# Only build categorical pipeline if categorical_features exist
 categorical_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('encoder', OneHotEncoder(handle_unknown='ignore'))
-])
+    ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+]) if categorical_features else 'drop'
+
 preprocessor = ColumnTransformer(
     transformers=[
         ('num', numeric_transformer, numeric_features),
-        ('cat', categorical_transformer, categorical_features)
-    ]
+        # Uncomment this once you add tire/weather columns
+        # ('cat', categorical_transformer, categorical_features)
+    ],
+    remainder='drop'
 )
 
 # ------------------------
@@ -124,6 +135,7 @@ rf_pipeline = Pipeline(steps=[
     ('model', RandomForestRegressor(random_state=1))
 ])
 rf_pipeline.fit(X_train, y_train)
+rf_model = rf_pipeline.named_steps['model']
 rf_preds = np.round(rf_pipeline.predict(X_valid)).astype(int)
 rf_mae = mean_absolute_error(y_valid, rf_preds)
 print("Random Forest Model Prediction vs Actual Values & Validation MAE & CV Scores")
@@ -141,6 +153,7 @@ xgb_pipeline = Pipeline(steps=[
     ('model', XGBRegressor(enable_categorical=False, random_state=42))
 ])
 xgb_pipeline.fit(X_train, y_train)
+xgb_model = xgb_pipeline.named_steps['model']
 xgb_preds = np.round(xgb_pipeline.predict(X_valid)).astype(int)
 xgb_mae = mean_absolute_error(y_valid, xgb_preds)
 print("XGBoost Model Prediction vs Actual Values & Validation MAE & CV Scores")
@@ -150,69 +163,77 @@ print("MAE:", xgb_mae)
 print("Mean CV MAE:", -cross_val_score(xgb_pipeline, X, y, cv=5, scoring='neg_mean_absolute_error').mean())
 print()
 
-# ------------------------
-# Feature Importances
-# ------------------------
-
-# ------------------------
-# Decision Tree
-# ------------------------
-print("Feature Importance of the Decision Tree Model")
-feature_importances = dt_model.feature_importances_
-if len(feature_importances) != len(X.columns):
-    # Use the processed feature names after encoding/scaling
-    feature_names = [f'feature_{i}' for i in range(len(feature_importances))]
-else:
-    feature_names = X.columns
-
-# Now create DataFrame
-importance_df = pd.DataFrame({
-    'feature': feature_names,
-    'importance': feature_importances
-})
-importance_df = importance_df.sort_values(by='importance', ascending=True)
-print("Feature Importance:",importance_df)
-
-plt.figure(figsize=(8, 5))
-plt.barh(feature_cols, dt_model.feature_importances_)
-plt.title("Decision Tree Model Feature Importance")
-plt.xlabel("Importance")
-plt.ylabel("Feature")
-plt.show(block=True)
-print("")
-
-# ------------------------
-# Random Forest
-# ------------------------
-print("Feature Importance of the Random Forest Model")
-feature_importances = rf_pipeline.feature_importances_
-importance_df = pd.DataFrame({'feature': X.columns, 'importance': feature_importances})
-importance_df = importance_df.sort_values(by='importance', ascending=True)
-print("Feature Importance:",importance_df)
-print("")
 
 
-plt.figure(figsize=(8, 5))
-plt.barh(X.columns, rf_pipeline.feature_importances_)
-plt.title("Random Forest Model Feature Importance")
-plt.xlabel("Importance")
-plt.ylabel("Feature")
-plt.show(block=True)
+def get_transformed_feature_names(pipeline):
+    """
+    Return the column names after the ColumnTransformer inside your pipeline.
+    Handles numeric passthrough (with imputer) and categorical OneHotEncoder.
+    """
+    pre = pipeline.named_steps['preprocessor']
 
-# ------------------------
-# XGBoost
-# ------------------------
-print("Feature Importance of the XGBoost Model")
-feature_importances = xgb_pipeline.feature_importances_
-importance_df = pd.DataFrame({'feature': X.columns, 'importance': feature_importances})
-importance_df = importance_df.sort_values(by='importance', ascending=True)
-print("Feature Importance:",importance_df)
+    # Helper to fetch the original column list for a given transformer name
+    def cols_for(name):
+        for n, trans, cols in pre.transformers_:
+            if n == name:
+                # 'cols' can be a list-like or an array; normalize to list
+                return list(cols)
+        return []
+
+    num_cols = cols_for('num')
+    cat_cols = cols_for('cat')
+
+    # Start with numeric columns (imputer keeps names)
+    names = list(num_cols)
+
+    # Add OHE-expanded categorical names if any categorical columns exist
+    cat_names = []
+    if cat_cols:
+        ohe = pre.named_transformers_['cat'].named_steps['encoder']
+        # get_feature_names_out returns names like "<original_col>_<category>"
+        cat_names = ohe.get_feature_names_out(cat_cols).tolist()
+
+    names.extend(cat_names)
+    return names
 
 
-plt.figure(figsize=(8, 5))
-plt.barh(X.columns, xgb_pipeline.feature_importances_)
-plt.title("XGBRegressor Model Feature Importance")
-plt.xlabel("Importance")
-plt.ylabel("Feature")
-plt.show(block=True)
-print("")
+def plot_feature_importance(pipeline, model_name, feature_cols):
+    """Plot sorted feature importances for a model inside a pipeline."""
+    # Get trained estimator from pipeline
+    model = pipeline.named_steps['model']
+    preprocessor = pipeline.named_steps['preprocessor']
+    
+    # Feature importances
+    importances = model.feature_importances_
+
+    # Future-proof: get real feature names (handles one-hot automatically)
+    try:
+        feature_names = preprocessor.get_feature_names_out(feature_cols)
+    except:
+        feature_names = feature_cols  # fallback when no categorical features
+
+    # Build dataframe
+    importance_df = pd.DataFrame({
+        "feature": feature_names,
+        "importance": importances
+    }).sort_values(by="importance", ascending=True)
+
+    # Print for inspection
+    print(f"\nFeature Importance of the {model_name} Model")
+    print(importance_df)
+
+    # Plot
+    plt.figure(figsize=(8, 5))
+    plt.barh(importance_df["feature"], importance_df["importance"])
+    plt.title(f"{model_name} Feature Importance")
+    plt.xlabel("Importance")
+    plt.ylabel("Feature")
+    plt.show(block=True)
+
+# Call for each fitted pipeline
+plot_feature_importance(dt_pipeline, "Decision Tree", feature_cols)
+plot_feature_importance(rf_pipeline, "Random Forest", feature_cols)
+plot_feature_importance(xgb_pipeline, "XGBoost", feature_cols)
+
+
+#Look into K-fold cross validation for splitting data

@@ -1,0 +1,112 @@
+# # ------------------------
+# # Feature Importances
+# # ------------------------
+
+# # ------------------------
+# # Decision Tree
+# # ------------------------
+# print("Feature Importance of the Decision Tree Model\n")
+# # Get feature importances
+# feature_importances = dt_model.feature_importances_
+
+# # Try to match back to original feature_cols
+# if len(feature_importances) == len(feature_cols):
+#     feature_names = feature_cols
+# else:
+#     # Fallback: auto-generate names if preprocessing expanded them
+#     feature_names = [f'feature_{i}' for i in range(len(feature_importances))]
+
+# # Create importance DataFrame
+# importance_df = pd.DataFrame({
+#     'feature': feature_names,
+#     'importance': feature_importances
+# })
+
+# # Sort by importance
+# importance_df = importance_df.sort_values(by='importance', ascending=True)
+
+# # Print top features
+# print(importance_df)
+
+# # Plot
+# plt.figure(figsize=(8, 5))
+# plt.barh(importance_df['feature'], importance_df['importance'])
+# plt.title("Decision Tree Model Feature Importance")
+# plt.xlabel("Importance")
+# plt.ylabel("Feature")
+# plt.show(block=True)
+# print("")
+
+# # ------------------------
+# # Random Forest
+# # ------------------------
+# print("Feature Importance of the Random Forest Model\n")
+# # Get feature importances
+# feature_importances =  rf_model.feature_importances_
+
+# # Try to match back to original feature_cols
+# if len(feature_importances) == len(feature_cols):
+#     feature_names = feature_cols
+# else:
+#     # Fallback: auto-generate names if preprocessing expanded them
+#     feature_names = [f'feature_{i}' for i in range(len(feature_importances))]
+
+# # Create importance DataFrame
+# importance_df = pd.DataFrame({
+#     'feature': feature_names,
+#     'importance': feature_importances
+# })
+
+# # Sort by importance
+# importance_df = importance_df.sort_values(by='importance', ascending=True)
+
+# # Print top features
+# print(importance_df)
+
+# # Plot
+# plt.figure(figsize=(8, 5))
+# plt.barh(importance_df['feature'], importance_df['importance'])
+# plt.title("Random Forest Model Feature Importance")
+# plt.xlabel("Importance")
+# plt.ylabel("Feature")
+# plt.show(block=True)
+# print("")
+
+# # ------------------------
+# # XGBoost
+# # ------------------------
+# print("Feature Importance of the XGBoost Model")
+# # Get feature importances
+# feature_importances =  xgb_model.feature_importances_
+
+# # Try to match back to original feature_cols
+# if len(feature_importances) == len(feature_cols):
+#     feature_names = feature_cols
+# else:
+#     # Fallback: auto-generate names if preprocessing expanded them
+#     feature_names = [f'feature_{i}' for i in range(len(feature_importances))]
+
+# # Create importance DataFrame
+# importance_df = pd.DataFrame({
+#     'feature': feature_names,
+#     'importance': feature_importances
+# })
+
+# # Sort by importance
+# importance_df = importance_df.sort_values(by='importance', ascending=True)
+
+# # Print top features
+# print(importance_df)
+
+# # Plot
+# plt.figure(figsize=(8, 5))
+# plt.barh(importance_df['feature'], importance_df['importance'])
+# plt.title("XGBoost Model Feature Importance")
+# plt.xlabel("Importance")
+# plt.ylabel("Feature")
+# plt.show(block=True)
+# print("")
+
+# ==============================
+# Feature importance (works with pipelines)
+# ==============================
