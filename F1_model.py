@@ -105,6 +105,15 @@ preprocessor = ColumnTransformer(
 )
 
 # ------------------------
+# Print Out Header
+# ------------------------
+print("This is an F1 points prediction model using Decision Tree, Random Forest, and XGBoost\n")
+print("This model uses data from the F1 2022 season, future updates will include 2023, 2024, and 2025 seasons\n")
+print("This model outputs the first 10 predictions from each model, the actual values, the validation MAE, and the mean cross-validated MAE\n")
+print("Then the model displays the feature importance for each model\n")
+print("--------------------------------------------------------------\n")
+
+# ------------------------
 # Train-test split
 # ------------------------
 X_train, X_valid, y_train, y_valid = train_test_split(X, y, train_size=0.8, random_state=1)
@@ -112,6 +121,7 @@ X_train, X_valid, y_train, y_valid = train_test_split(X, y, train_size=0.8, rand
 # ------------------------
 # Decision Tree
 # ------------------------
+print("Model 1: Decision Tree Regressor\n")
 dt_pipeline = Pipeline(steps=[
     ('preprocessor', preprocessor),
     ('model', DecisionTreeRegressor(random_state=1))
@@ -130,6 +140,7 @@ print()
 # ------------------------
 # Random Forest
 # ------------------------
+print("Model 2: Random Forest Regressor\n")
 rf_pipeline = Pipeline(steps=[
     ('preprocessor', preprocessor),
     ('model', RandomForestRegressor(random_state=1))
@@ -148,6 +159,7 @@ print()
 # ------------------------
 # XGBoost
 # ------------------------
+print("Model 3: XGBoost Regressor\n")
 xgb_pipeline = Pipeline(steps=[
     ('preprocessor', preprocessor),
     ('model', XGBRegressor(enable_categorical=False, random_state=42))
@@ -196,6 +208,12 @@ def get_transformed_feature_names(pipeline):
     names.extend(cat_names)
     return names
 
+# ==============================
+# Feature importance (works with pipelines)
+# ==============================
+print("-------------------------------")
+print("Feature Importance for Each Model")
+print("-------------------------------\n")
 
 def plot_feature_importance(pipeline, model_name, feature_cols):
     """Plot sorted feature importances for a model inside a pipeline."""
